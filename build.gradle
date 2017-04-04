@@ -1,0 +1,116 @@
+group 'demo1'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'thrift'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'co.tomlee.gradle.plugins:gradle-thrift-plugin:0.0.6'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    javaAgent
+}
+
+dependencies {
+    ['armeria',
+//     'armeria-jetty',
+//     'armeria-kafka',
+//     'armeria-logback',
+//     'armeria-retrofit2',
+     'armeria-thrift',
+//     'armeria-tomcat',
+//     'armeria-zipkin',
+//     'armeria-zookeeper'
+    ].each {
+        compile "com.linecorp.armeria:${it}:0.42.0"
+    }
+
+    compile 'org.apache.thrift:libthrift:0.10.0'
+
+    // Logging
+    runtime 'ch.qos.logback:logback-classic:1.2.2'
+    runtime 'org.slf4j:log4j-over-slf4j:1.7.25'
+}
+
+// Require Java 8 to build the project.
+tasks.withType(JavaCompile) {
+    sourceCompatibility '1.8'
+    targetCompatibility '1.8'
+}
+
+generateThriftSource {
+    //
+    // The output directory (optional)
+    //
+    out file('build/generated-src/thrift/main')
+
+    //
+    // -verbose / -debug / -strict (all optional)
+    //
+    verbose false
+    debug false
+    strict false
+
+    //
+    // Modify the include path (optional)
+    //
+    path file('vendor/thrift')
+
+    //
+    // Set the thrift executable (optional)
+    //
+    executable '/usr/bin/thrift'
+
+    generators {
+        //
+        // --gen java:hashcode,beans
+        //
+        java {
+            //
+            // Options passed to the `java` generator
+            //
+            option 'hashcode'
+            option 'beans'
+        }
+    }
+}
+
+compileTestJava {
+    // Thrift-generated code produces some warnings.
+    options.compilerArgs += ["-Xep:MissingOverride:OFF",
+                             "-Xep:NonOverridingEquals:OFF", "-Xep:TypeParameterUnusedInFormals:OFF"]
+}
+
+String generatedSourcePath = "${projectDir}/src/generated"
+project.sourceSets {
+    main {
+        java {
+            srcDir "${generatedSourcePath}/main/java"
+            srcDir "${generatedSourcePath}/main/grpc"
+        }
+    }
+    test {
+        java {
+            srcDir "${generatedSourcePath}/test/java"
+            srcDir "${generatedSourcePath}/test/grpc"
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("${projectDir}/src/generated/test/java");
+    }
+}
